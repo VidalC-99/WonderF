@@ -7,8 +7,6 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<Question>
- *
  * @method Question|null find($id, $lockMode = null, $lockVersion = null)
  * @method Question|null findOneBy(array $criteria, array $orderBy = null)
  * @method Question[]    findAll()
@@ -21,46 +19,56 @@ class QuestionRepository extends ServiceEntityRepository
         parent::__construct($registry, Question::class);
     }
 
-    public function save(Question $entity, bool $flush = false): void
+    public function getQuestionsWithAuthors()
     {
-        $this->getEntityManager()->persist($entity);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
+        return $this->createQueryBuilder('q')
+            ->leftJoin('q.author', 'a')
+            ->addSelect('a')
+            ->getQuery()
+            ->getResult();
     }
 
-    public function remove(Question $entity, bool $flush = false): void
+    public function getQuestionWithCommentsAndAuthors(int $id)
     {
-        $this->getEntityManager()->remove($entity);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
+        return $this->createQueryBuilder('q')
+            ->where('q.id = :id')
+            ->setParameter('id', $id)
+            ->leftJoin('q.author', 'a')
+            ->addSelect('a')
+            ->leftJoin('q.comments', 'c')
+            ->addSelect('c')
+            ->leftJoin('c.author', 'ca')
+            ->addSelect('ca')
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
-//    /**
-//     * @return Question[] Returns an array of Question objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('q')
-//            ->andWhere('q.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('q.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    // /**
+    //  * @return Question[] Returns an array of Question objects
+    //  */
+    /*
+    public function findByExampleField($value)
+    {
+        return $this->createQueryBuilder('q')
+            ->andWhere('q.exampleField = :val')
+            ->setParameter('val', $value)
+            ->orderBy('q.id', 'ASC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult()
+        ;
+    }
+    */
 
-//    public function findOneBySomeField($value): ?Question
-//    {
-//        return $this->createQueryBuilder('q')
-//            ->andWhere('q.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+    /*
+    public function findOneBySomeField($value): ?Question
+    {
+        return $this->createQueryBuilder('q')
+            ->andWhere('q.exampleField = :val')
+            ->setParameter('val', $value)
+            ->getQuery()
+            ->getOneOrNullResult()
+        ;
+    }
+    */
 }

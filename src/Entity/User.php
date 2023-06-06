@@ -2,60 +2,90 @@
 
 namespace App\Entity;
 
-use App\Repository\UserRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
+use App\Repository\UserRepository;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
-#[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: '`user`')]
+/**
+ * @ORM\Entity(repositoryClass=UserRepository::class)
+ * @UniqueEntity(fields="email", message="l'email est déjà utilisé")
+ */
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     */
+    private $id;
 
-    #[ORM\Column(length: 180, unique: true)]
-    #[NotBlank(message:'Ce champs ne doit pas être vide !')]
-    private ?string $email = null;
+    /**
+     * @ORM\Column(type="string", length=180, unique=true)
+     */
+    #[Assert\Email(message: 'Veuillez rentrer un email valide.')]
+    #[Assert\NotBlank(message: 'Veuillez renseigner votre email.')]
+    private $email;
 
-    #[ORM\Column]
-    private array $roles = [];
+    /**
+     * @ORM\Column(type="json")
+     */
+    private $roles = [];
 
     /**
      * @var string The hashed password
+     * @ORM\Column(type="string")
      */
-    #[ORM\Column]
-    private ?string $password = null;
+    #[Assert\Length(min: 6, minMessage: 'Le mot de passe doit faire au moins 6 caractères.')]
+    #[Assert\NotBlank(message: 'Veuillez renseigner un mot de passe.')]
+    private $password;
 
-    #[ORM\Column(length: 255)]
-    #[Assert\Length(min:2, minMessage: 'Votre prénom est trop court')]
-    #[NotBlank(message:'Ce champs ne peut pas être vide !')]
-    private ?string $firstName = null;
+    #[Assert\Length(min: 6, minMessage: 'Le mot de passe doit faire au moins 6 caractères.')]
+    private $newPassword;
 
-    #[ORM\Column(length: 255)]
-    #[Assert\Length(min:2, minMessage: 'Votre nom est trop court')]
-    #[NotBlank(message:'Ce champs ne peut pas être vide !')]
-    private ?string $lastName = null;
+    /**
+     * @ORM\Column(type="string", length=255)
+     */
+    #[Assert\NotBlank(message: 'Veuillez renseigner votre prénom.')]
+    private $firstname;
 
-    #[ORM\Column(length: 255)]
-    private ?string $Image = null;
+    /**
+     * @ORM\Column(type="string", length=255)
+     */
+    #[Assert\NotBlank(message: 'Veuillez renseigner votre nom.')]
+    private $lastname;
 
-    #[ORM\OneToMany(mappedBy: 'QuestionUser', targetEntity: Question::class)]
-    private Collection $Questions;
+    /**
+     * @ORM\OneToMany(targetEntity=Question::class, mappedBy="author", orphanRemoval=true)
+     */
+    private $questions;
 
-    #[ORM\OneToMany(mappedBy: 'CommentUser', targetEntity: Comment::class)]
-    private Collection $Comments;
+    /**
+     * @ORM\OneToMany(targetEntity=Comment::class, mappedBy="author", orphanRemoval=true)
+     */
+    private $comments;
+
+    /**
+     * @ORM\Column(type="string", length=255)
+     */
+    #[Assert\Url(message: 'Veuillez renseigner une url.')]
+    #[Assert\NotBlank(message: 'Veuillez renseigner une image de profil.')]
+    private $picture;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Vote::class, mappedBy="author", orphanRemoval=true)
+     */
+    private $votes;
 
     public function __construct()
     {
-        $this->Questions = new ArrayCollection();
-        $this->Comments = new ArrayCollection();
+        $this->questions = new ArrayCollection();
+        $this->comments = new ArrayCollection();
+        $this->votes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -81,6 +111,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @see UserInterface
      */
     public function getUserIdentifier(): string
+    {
+        return (string) $this->email;
+    }
+
+    /**
+     * @deprecated since Symfony 5.3, use getUserIdentifier instead
+     */
+    public function getUsername(): string
     {
         return (string) $this->email;
     }
@@ -119,6 +157,29 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getNewPassword(): ?string
+    {
+        return $this->newPassword;
+    }
+
+    public function setNewPassword(string $password): self
+    {
+        $this->newPassword = $password;
+
+        return $this;
+    }
+
+    /**
+     * Returning a salt is only needed, if you are not using a modern
+     * hashing algorithm (e.g. bcrypt or sodium) in your security.yaml.
+     *
+     * @see UserInterface
+     */
+    public function getSalt(): ?string
+    {
+        return null;
+    }
+
     /**
      * @see UserInterface
      */
@@ -128,55 +189,43 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         // $this->plainPassword = null;
     }
 
-    public function getFirstName(): ?string
+    public function getFirstname(): ?string
     {
-        return $this->firstName;
+        return $this->firstname;
     }
 
-    public function setFirstName(string $firstName): self
+    public function setFirstname(string $firstname): self
     {
-        $this->firstName = $firstName;
+        $this->firstname = $firstname;
 
         return $this;
     }
 
-    public function getLastName(): ?string
+    public function getLastname(): ?string
     {
-        return $this->lastName;
+        return $this->lastname;
     }
 
-    public function setLastName(string $lastName): self
+    public function setLastname(string $lastname): self
     {
-        $this->lastName = $lastName;
-
-        return $this;
-    }
-
-    public function getImage(): ?string
-    {
-        return $this->Image;
-    }
-
-    public function setImage(string $Image): self
-    {
-        $this->Image = $Image;
+        $this->lastname = $lastname;
 
         return $this;
     }
 
     /**
-     * @return Collection<int, Question>
+     * @return Collection|Question[]
      */
     public function getQuestions(): Collection
     {
-        return $this->Questions;
+        return $this->questions;
     }
 
     public function addQuestion(Question $question): self
     {
-        if (!$this->Questions->contains($question)) {
-            $this->Questions->add($question);
-            $question->setQuestionUser($this);
+        if (!$this->questions->contains($question)) {
+            $this->questions[] = $question;
+            $question->setAuthor($this);
         }
 
         return $this;
@@ -184,10 +233,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function removeQuestion(Question $question): self
     {
-        if ($this->Questions->removeElement($question)) {
+        if ($this->questions->removeElement($question)) {
             // set the owning side to null (unless already changed)
-            if ($question->getQuestionUser() === $this) {
-                $question->setQuestionUser(null);
+            if ($question->getAuthor() === $this) {
+                $question->setAuthor(null);
             }
         }
 
@@ -195,18 +244,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * @return Collection<int, Comment>
+     * @return Collection|Comment[]
      */
     public function getComments(): Collection
     {
-        return $this->Comments;
+        return $this->comments;
     }
 
     public function addComment(Comment $comment): self
     {
-        if (!$this->Comments->contains($comment)) {
-            $this->Comments->add($comment);
-            $comment->setCommentUser($this);
+        if (!$this->comments->contains($comment)) {
+            $this->comments[] = $comment;
+            $comment->setAuthor($this);
         }
 
         return $this;
@@ -214,10 +263,57 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function removeComment(Comment $comment): self
     {
-        if ($this->Comments->removeElement($comment)) {
+        if ($this->comments->removeElement($comment)) {
             // set the owning side to null (unless already changed)
-            if ($comment->getCommentUser() === $this) {
-                $comment->setCommentUser(null);
+            if ($comment->getAuthor() === $this) {
+                $comment->setAuthor(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getPicture(): ?string
+    {
+        return $this->picture;
+    }
+
+    public function setPicture(string $picture): self
+    {
+        $this->picture = $picture;
+
+        return $this;
+    }
+
+    public function getFullname(): ?string
+    {
+        return $this->firstname . ' ' . $this->lastname;
+    }
+
+    /**
+     * @return Collection|Vote[]
+     */
+    public function getVotes(): Collection
+    {
+        return $this->votes;
+    }
+
+    public function addVote(Vote $vote): self
+    {
+        if (!$this->votes->contains($vote)) {
+            $this->votes[] = $vote;
+            $vote->setAuthor($this);
+        }
+
+        return $this;
+    }
+
+    public function removeVote(Vote $vote): self
+    {
+        if ($this->votes->removeElement($vote)) {
+            // set the owning side to null (unless already changed)
+            if ($vote->getAuthor() === $this) {
+                $vote->setAuthor(null);
             }
         }
 

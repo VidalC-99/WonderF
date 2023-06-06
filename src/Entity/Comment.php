@@ -3,31 +3,61 @@
 namespace App\Entity;
 
 use App\Repository\CommentRepository;
-use Doctrine\DBAL\Types\Types;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
-#[ORM\Entity(repositoryClass: CommentRepository::class)]
+/**
+ * @ORM\Entity(repositoryClass=CommentRepository::class)
+ */
 class Comment
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     */
+    private $id;
 
-    #[ORM\Column(type: Types::TEXT)]
-    private ?string $content = null;
+    /**
+     * @ORM\Column(type="text")
+     */
+    #[Assert\NotBlank(message: 'Veuillez détailler votre réponse')]
+    #[Assert\Length(min: 100, minMessage: 'Votre réponse est trop courte')]
+    private $content;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt = null;
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private $rating;
 
-    #[ORM\Column]
-    private ?int $rating = null;
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     */
+    private $createdAt;
 
-    #[ORM\ManyToOne(inversedBy: 'Comments')]
-    private ?User $CommentUser = null;
+    /**
+     * @ORM\ManyToOne(targetEntity=Question::class, inversedBy="comments")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $question;
 
-    #[ORM\ManyToOne(inversedBy: 'comments')]
-    private ?Question $Questions = null;
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="comments")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $author;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Vote::class, mappedBy="comment")
+     */
+    private $votes;
+
+    public function __construct()
+    {
+        $this->votes = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -46,18 +76,6 @@ class Comment
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $createdAt): self
-    {
-        $this->createdAt = $createdAt;
-
-        return $this;
-    }
-
     public function getRating(): ?int
     {
         return $this->rating;
@@ -70,26 +88,68 @@ class Comment
         return $this;
     }
 
-    public function getCommentUser(): ?User
+    public function getCreatedAt(): ?\DateTimeImmutable
     {
-        return $this->CommentUser;
+        return $this->createdAt;
     }
 
-    public function setCommentUser(?User $CommentUser): self
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
-        $this->CommentUser = $CommentUser;
+        $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getQuestions(): ?Question
+    public function getQuestion(): ?Question
     {
-        return $this->Questions;
+        return $this->question;
     }
 
-    public function setQuestions(?Question $Questions): self
+    public function setQuestion(?Question $question): self
     {
-        $this->Questions = $Questions;
+        $this->question = $question;
+
+        return $this;
+    }
+
+    public function getAuthor(): ?User
+    {
+        return $this->author;
+    }
+
+    public function setAuthor(?User $author): self
+    {
+        $this->author = $author;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Vote[]
+     */
+    public function getVotes(): Collection
+    {
+        return $this->votes;
+    }
+
+    public function addVote(Vote $vote): self
+    {
+        if (!$this->votes->contains($vote)) {
+            $this->votes[] = $vote;
+            $vote->setComment($this);
+        }
+
+        return $this;
+    }
+
+    public function removeVote(Vote $vote): self
+    {
+        if ($this->votes->removeElement($vote)) {
+            // set the owning side to null (unless already changed)
+            if ($vote->getComment() === $this) {
+                $vote->setComment(null);
+            }
+        }
 
         return $this;
     }
